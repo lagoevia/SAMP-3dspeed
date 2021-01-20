@@ -14,7 +14,7 @@
     ],
     "dev_dependencies": [
         "pawn-lang/YSI-Includes@5.x",
-        "maddinat0r/sscanf"
+        "Y-Less/sscanf"
     ],
     "resources": [
         {
