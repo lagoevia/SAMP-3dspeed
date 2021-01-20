@@ -5,7 +5,11 @@
 // Can place definitions for speed include here (i.e language, mph, etc.)
 #include "3dspeed.inc"
 
-static bool:_g_s_toggleFuel = false;
+static
+    bool:_g_s_fuel = false,
+    bool:_g_s_speed = false,
+    bool:_g_s_showHealth = false,
+    bool:_g_s_showName = false;
 
 main()
 {
@@ -27,10 +31,13 @@ public OnPlayerUpdate(playerid)
     {
         // Include itself is not responsible for calculating speed/fuel, so just generate random int values in a range and pass those
         new
-            speed = random(140),
-            fuel = _g_s_toggleFuel ? random(101) : -1; // [0, 100] or -1 if toggled off
+            speed = _g_s_speed ? random(140) : TDSPEED_INVALID_ITEM,
+            fuel = _g_s_fuel ? random(101) : TDSPEED_INVALID_ITEM,
+            bool:showHealth = _g_s_showHealth,
+            bool:showName = _g_s_showName
+        ;
 
-        Update3DSpeedometer(playerid, speed, fuel);
+        Update3DSpeedometer(playerid, showName, showHealth, speed, fuel);
     }
 }
 
@@ -46,11 +53,39 @@ YCMD:v(playerid, params[], help)
     return 1;
 }
 
-YCMD:tf(playerid, params[], help)
+YCMD:toggle(playerid, params[], help)
 {
-    _g_s_toggleFuel = !_g_s_toggleFuel;
+    new itemid;
+    if(sscanf(params, "d", itemid)) return SendClientMessage(playerid, -1, "Usage: /toggle <item>, where item = (0) fuel, (1) health, (2) speed, or (3) name");
     new msg[64];
-    format(msg, _, "Fuel toggled to state: %s", _g_s_toggleFuel ? "ON" : "OFF");
+    switch(itemid)
+    {
+        case TDSPEED_ITEM_FUEL:
+        {
+            _g_s_fuel = !_g_s_fuel;
+            format(msg, _, "Fuel toggled to state: %s", _g_s_fuel ? "ON" : "OFF");
+        }
+        case TDSPEED_ITEM_HEALTH:
+        {
+            _g_s_showHealth = !_g_s_showHealth;
+            format(msg, _, "Health toggled to state: %s", _g_s_showHealth ? "ON" : "OFF");
+        }
+        case TDSPEED_ITEM_SPEED:
+        {
+            _g_s_speed = !_g_s_speed;
+            format(msg, _, "Speed toggled to state: %s", _g_s_speed ? "ON" : "OFF");
+        }
+        case TDSPEED_ITEM_NAME:
+        {
+            _g_s_showName = !_g_s_showName;
+            format(msg, _, "HideName toggled to state: %s", _g_s_showName ? "ON" : "OFF");
+        }
+        default:
+        {
+            format(msg, _, "Unknown item id: %d", itemid);
+        }
+    }
+
     SendClientMessage(playerid, -1, msg);
     return 1;
 }

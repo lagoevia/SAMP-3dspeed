@@ -29,10 +29,43 @@
 	TDSPEED_HIDENAME to not show vehicle name.
 */
 
+// TODO: change some of these names to avoid global scope conflict; prefix these and static globals accordingly
+// TODO: add ability to specify custom offsets for each player
+// TODO: change prefixing of macros to 'TDS' to shorten length? Probably not
+// TODO: hidename macro was there to avoid drawing an object if they are not meant to be drawn - however, this was very forcing to all players and not versatile; explain in PR
+// TODO: fix hooks not returning 1 if custom name not defined. Also, why not ALS? Point is to communicate that to other libraries, or am I confusing something?
+
+#define TDSPEED_INVALID_ITEM -1
+
+enum {
+	TDSPEED_LANG_ENGLISH = 0,
+	TDSPEED_LANG_SPANISH,
+
+	TDSPEED_LANG_MAX
+};
+
+#if defined TDSPEED_SPANISH
+	static _g_s_activeLanguage = TDSPEED_LANG_SPANISH;
+#else
+	static _g_s_activeLanguage = TDSPEED_LANG_ENGLISH;
+#endif
+
+enum {
+    TDSPEED_ITEM_FUEL= 0,
+    TDSPEED_ITEM_HEALTH,
+    TDSPEED_ITEM_SPEED,
+    TDSPEED_ITEM_NAME,
+
+    TDSPEED_ITEM_MAX
+};
+
+static _g_s_languageStrings[TDSPEED_LANG_MAX][2][16] = {
+	{"Fuel", "Health"},
+	{"Combustible", "Vida"}
+};
+
 enum SpeedometerComponents {
-	#if !defined TDSPEED_HIDENAME
 	Name,
-	#endif
 	Status,
 	Speed,
 	Enabled
@@ -41,8 +74,6 @@ enum SpeedometerComponents {
 static tds_Player[MAX_PLAYERS][SpeedometerComponents];
 
 /* Vehicle names array */
-
-#if !defined TDSPEED_HIDENAME
 
 static gVehicleNames[][] = {
 	"Landstalker",
@@ -259,11 +290,9 @@ static gVehicleNames[][] = {
 	"Utility Trailer"
 };
 
-#endif
-
 /* Functions */
 
-stock Update3DSpeedometer(playerid, speed, fuel=-1) {
+stock Update3DSpeedometer(playerid, bool:showName=true, bool:showHealth = false, speed=TDSPEED_INVALID_ITEM, fuel=TDSPEED_INVALID_ITEM) {
 	if (!tds_Player[playerid][Enabled]) return 1;
 	if (!IsPlayerInAnyVehicle(playerid)) {
 		tdSpeedo_Toggle(playerid, 0);
@@ -273,30 +302,35 @@ stock Update3DSpeedometer(playerid, speed, fuel=-1) {
 		new Float:vhp;
 		GetVehicleHealth(vehid, vhp);
 		vhp = (((vhp - 250.0) / 750.0) * 100.0);
-		new speedText[48];
-		new statusText[48];
-		if (fuel > -1) {
-			#if !defined TDSPEED_SPANISH
-				format(statusText, 48, "Fuel: %i%%, Health: %3.0f%%", fuel, vhp);
+
+		// Format the status text in order: fuel first, then health
+		new statusText[48] = " ";
+		if(fuel != TDSPEED_INVALID_ITEM) {
+			format(statusText, _, "%s: %i%%", _g_s_languageStrings[_g_s_activeLanguage][TDSPEED_ITEM_FUEL], fuel);
+		}
+		if(showHealth) {
+			if(fuel == TDSPEED_INVALID_ITEM) {
+				format(statusText, _, "%s: %3.0f%%", _g_s_languageStrings[_g_s_activeLanguage][TDSPEED_ITEM_HEALTH], vhp);
+			}
+			else {
+				format(statusText, _, "%s, %s: %3.0f%%", statusText, _g_s_languageStrings[_g_s_activeLanguage][TDSPEED_ITEM_HEALTH], vhp);
+			}
+		}
+
+		// Format the speed text (in separate line)
+		new speedText[48] = " ";
+		if(speed != TDSPEED_INVALID_ITEM)
+		{
+			#if !defined TDSPEED_MPH
+				format(speedText, _, "%i KMH", speed);
 			#else
-				format(statusText, 48, "Combustible: %i%%, Vida: %3.0f%%", fuel, vhp);
-			#endif
-		} else {
-			#if !defined TDSPEED_SPANISH
-				format(statusText, 48, "Health: %3.0f%%", vhp);
-			#else
-				format(statusText, 48, "Vida: %3.0f%%", vhp);
+				format(speedText, _, "%i MPH", speed);
 			#endif
 		}
-		#if !defined TDSPEED_MPH
-			format(speedText, 48, "%i KMH", speed);
-		#else
-			format(speedText, 48, "%i MPH", speed);
-		#endif
-		#if !defined TDSPEED_HIDENAME
-			new modelid = GetVehicleModel(vehid);
-			SetDynamicObjectMaterialText(tds_Player[playerid][Name], 0, gVehicleNames[modelid-400], OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, true, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
-		#endif
+		// Decide whether or not to display the vehicle name; then render name, status, speed in that order
+		new modelid = GetVehicleModel(vehid);
+		// TODO: explain how below the alternate text cannot be empty as it will not be re-rendered -> use spaces where appropriate
+		SetDynamicObjectMaterialText(tds_Player[playerid][Name], 0, showName ? gVehicleNames[modelid-400] : " ", OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, true, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
 		SetDynamicObjectMaterialText(tds_Player[playerid][Status], 0, statusText, OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, false, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
 		SetDynamicObjectMaterialText(tds_Player[playerid][Speed], 0, speedText, OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, false, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
 	}
@@ -310,9 +344,7 @@ static tdSpeedo_Toggle(playerid, activate) {
 		}
 		new vid = GetPlayerVehicleID(playerid);
 		new vmod = GetVehicleModel(vid);
-		#if !defined TDSPEED_HIDENAME
-			tds_Player[playerid][Name] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
-		#endif
+		tds_Player[playerid][Name] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
 		tds_Player[playerid][Status] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
 		tds_Player[playerid][Speed] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
 		new Float:vX,Float:vY,Float:vZ;
@@ -320,19 +352,15 @@ static tdSpeedo_Toggle(playerid, activate) {
 		if (vX < 1.5) {
 			vX = 1.5;
 		}
-		#if !defined TDSPEED_HIDENAME
-			AttachDynamicObjectToVehicle(tds_Player[playerid][Name], vid, -vX-1.75, -1.0, 0.0, 0.0, 0.0, 290.0);
-		#endif
+		AttachDynamicObjectToVehicle(tds_Player[playerid][Name], vid, -vX-1.75, -1.0, 0.0, 0.0, 0.0, 290.0);
 		AttachDynamicObjectToVehicle(tds_Player[playerid][Status], vid, -vX-1.75, -1.0, -0.3, 0.0, 0.0, 290.0);
 		AttachDynamicObjectToVehicle(tds_Player[playerid][Speed], vid, -vX-1.75, -1.0, -0.6, 0.0, 0.0, 290.0);
 		Streamer_Update(playerid);
 		tds_Player[playerid][Enabled] = 1;
 	} else {
 		if (tds_Player[playerid][Status] != INVALID_OBJECT_ID) {
-			#if !defined TDSPEED_HIDENAME
-				DestroyDynamicObject(tds_Player[playerid][Name]);
-				tds_Player[playerid][Name] = INVALID_OBJECT_ID;
-			#endif
+			DestroyDynamicObject(tds_Player[playerid][Name]);
+			tds_Player[playerid][Name] = INVALID_OBJECT_ID;
 			DestroyDynamicObject(tds_Player[playerid][Status]);
 			tds_Player[playerid][Status] = INVALID_OBJECT_ID;
 			DestroyDynamicObject(tds_Player[playerid][Speed]);
@@ -362,9 +390,7 @@ public OnPlayerConnect(playerid) {
 
 public OnPlayerDisconnect(playerid, reason) {
 	if(tds_Player[playerid][Status] != INVALID_OBJECT_ID) {
-		#if !defined TDSPEED_HIDENAME
-			DestroyDynamicObject(tds_Player[playerid][Name]);
-		#endif
+		DestroyDynamicObject(tds_Player[playerid][Name]);
 		DestroyDynamicObject(tds_Player[playerid][Status]);
 		DestroyDynamicObject(tds_Player[playerid][Speed]);
 	}
