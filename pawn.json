@@ -1,0 +1,37 @@
+{
+    "user": "lagoevia",
+    "repo": "SAMP-3dspeed",
+    "contributors": [
+        "markski1",
+        "phlair"
+    ],
+    "entry": "test.pwn",
+    "output": "test.amx",
+    "local": false,
+    "dependencies": [
+        "sampctl/samp-stdlib",
+        "samp-incognito/samp-streamer-plugin"
+    ],
+    "dev_dependencies": [
+        "pawn-lang/YSI-Includes@5.x",
+        "maddinat0r/sscanf"
+    ],
+    "resources": [
+        {
+            "name": "^samp-streamer-plugin-(.*).zip$",
+            "platform": "linux",
+            "archive": true,
+            "includes": [
+                "pawno/include"
+            ]
+        },
+        {
+            "name": "^samp-streamer-plugin-(.*).zip$",
+            "platform": "windows",
+            "archive": true,
+            "includes": [
+                "pawno/include"
+            ]
+        }
+    ]
+}
