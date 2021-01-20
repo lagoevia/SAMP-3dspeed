@@ -12,6 +12,15 @@
 
 #define tdspeed_included
 
+#if !defined _streamer_included
+	#tryinclude <streamer>
+	#tryinclude "streamer"
+#endif
+
+#if !defined _streamer_included
+	#error "Could not include the streamer. Get it here: https://github.com/samp-incognito/samp-streamer-plugin"
+#endif
+
 /*
 	Configuration constants, include before this file.
 
@@ -261,7 +270,7 @@ stock Update3DSpeedometer(playerid, speed, fuel=-1) {
 		return 1;
 	} else if (!IsPlayerNPC(playerid)) {
 		new vehid = GetPlayerVehicleID(playerid);
-		new Float:pvX, Float:pvY, Float:pvZ, Float:vhp;
+		new Float:vhp;
 		GetVehicleHealth(vehid, vhp);
 		vhp = (((vhp - 250.0) / 750.0) * 100.0);
 		new speedText[48];
