@@ -29,7 +29,6 @@
 	TDSPEED_HIDENAME to not show vehicle name.
 */
 
-// TODO: change some of these names to avoid global scope conflict; prefix these and static globals accordingly
 // TODO: add ability to specify custom offsets for each player
 // TODO: change prefixing of macros to 'TDS' to shorten length? Probably not
 // TODO: hidename macro was there to avoid drawing an object if they are not meant to be drawn - however, this was very forcing to all players and not versatile; explain in PR
@@ -64,14 +63,13 @@ static _g_s_languageStrings[TDSPEED_LANG_MAX][2][16] = {
 	{"Combustible", "Vida"}
 };
 
-enum SpeedometerComponents {
-	Name,
-	Status,
-	Speed,
-	Enabled
-}
-
-static tds_Player[MAX_PLAYERS][SpeedometerComponents];
+// Components of the 3dspeed GUI
+static
+	STREAMER_TAG_OBJECT:_g_s_guiName[MAX_PLAYERS],
+	STREAMER_TAG_OBJECT:_g_s_guiStatus[MAX_PLAYERS],
+	STREAMER_TAG_OBJECT:_g_s_guiSpeed[MAX_PLAYERS],
+	bool:_g_s_isGUIEnabled[MAX_PLAYERS]
+	;
 
 /* Vehicle names array */
 
@@ -293,9 +291,9 @@ static gVehicleNames[][] = {
 /* Functions */
 
 stock Update3DSpeedometer(playerid, bool:showName=true, bool:showHealth = false, speed=TDSPEED_INVALID_ITEM, fuel=TDSPEED_INVALID_ITEM) {
-	if (!tds_Player[playerid][Enabled]) return 1;
+	if (!_g_s_isGUIEnabled[playerid]) return 1;
 	if (!IsPlayerInAnyVehicle(playerid)) {
-		tdSpeedo_Toggle(playerid, 0);
+		tdSpeedo_Toggle(playerid, false);
 		return 1;
 	} else if (!IsPlayerNPC(playerid)) {
 		new vehid = GetPlayerVehicleID(playerid);
@@ -330,44 +328,43 @@ stock Update3DSpeedometer(playerid, bool:showName=true, bool:showHealth = false,
 		// Decide whether or not to display the vehicle name; then render name, status, speed in that order
 		new modelid = GetVehicleModel(vehid);
 		// TODO: explain how below the alternate text cannot be empty as it will not be re-rendered -> use spaces where appropriate
-		SetDynamicObjectMaterialText(tds_Player[playerid][Name], 0, showName ? gVehicleNames[modelid-400] : " ", OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, true, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
-		SetDynamicObjectMaterialText(tds_Player[playerid][Status], 0, statusText, OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, false, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
-		SetDynamicObjectMaterialText(tds_Player[playerid][Speed], 0, speedText, OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, false, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
+		SetDynamicObjectMaterialText(_g_s_guiName[playerid], 0, showName ? gVehicleNames[modelid-400] : " ", OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, true, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
+		SetDynamicObjectMaterialText(_g_s_guiStatus[playerid], 0, statusText, OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, false, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
+		SetDynamicObjectMaterialText(_g_s_guiSpeed[playerid], 0, speedText, OBJECT_MATERIAL_SIZE_512x256, "Arial", 30, false, 0xFFFFFFFF, 0, OBJECT_MATERIAL_TEXT_ALIGN_RIGHT);
 	}
 	return 1;
 }
 
-static tdSpeedo_Toggle(playerid, activate) {
+static tdSpeedo_Toggle(playerid, bool:activate) {
 	if (activate) {
-		if (tds_Player[playerid][Enabled]) {
+		if (_g_s_isGUIEnabled[playerid]) {
 			return 1;
 		}
 		new vid = GetPlayerVehicleID(playerid);
 		new vmod = GetVehicleModel(vid);
-		tds_Player[playerid][Name] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
-		tds_Player[playerid][Status] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
-		tds_Player[playerid][Speed] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
+		_g_s_guiName[playerid] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
+		_g_s_guiStatus[playerid] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
+		_g_s_guiSpeed[playerid] = CreateDynamicObject(19482, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1, -1, playerid, 200.0);
 		new Float:vX,Float:vY,Float:vZ;
 		GetVehicleModelInfo(vmod, VEHICLE_MODEL_INFO_SIZE, vX, vY, vZ);
 		if (vX < 1.5) {
 			vX = 1.5;
 		}
-		AttachDynamicObjectToVehicle(tds_Player[playerid][Name], vid, -vX-1.75, -1.0, 0.0, 0.0, 0.0, 290.0);
-		AttachDynamicObjectToVehicle(tds_Player[playerid][Status], vid, -vX-1.75, -1.0, -0.3, 0.0, 0.0, 290.0);
-		AttachDynamicObjectToVehicle(tds_Player[playerid][Speed], vid, -vX-1.75, -1.0, -0.6, 0.0, 0.0, 290.0);
+		AttachDynamicObjectToVehicle(_g_s_guiName[playerid], vid, -vX-1.75, -1.0, 0.0, 0.0, 0.0, 290.0);
+		AttachDynamicObjectToVehicle(_g_s_guiStatus[playerid], vid, -vX-1.75, -1.0, -0.3, 0.0, 0.0, 290.0);
+		AttachDynamicObjectToVehicle(_g_s_guiSpeed[playerid], vid, -vX-1.75, -1.0, -0.6, 0.0, 0.0, 290.0);
 		Streamer_Update(playerid);
-		tds_Player[playerid][Enabled] = 1;
 	} else {
-		if (tds_Player[playerid][Status] != INVALID_OBJECT_ID) {
-			DestroyDynamicObject(tds_Player[playerid][Name]);
-			tds_Player[playerid][Name] = INVALID_OBJECT_ID;
-			DestroyDynamicObject(tds_Player[playerid][Status]);
-			tds_Player[playerid][Status] = INVALID_OBJECT_ID;
-			DestroyDynamicObject(tds_Player[playerid][Speed]);
-			tds_Player[playerid][Speed] = INVALID_OBJECT_ID;
+		if (_g_s_guiStatus[playerid] != INVALID_OBJECT_ID) {
+			DestroyDynamicObject(_g_s_guiName[playerid]);
+			_g_s_guiName[playerid] = INVALID_OBJECT_ID;
+			DestroyDynamicObject(_g_s_guiStatus[playerid]);
+			_g_s_guiStatus[playerid] = INVALID_OBJECT_ID;
+			DestroyDynamicObject(_g_s_guiSpeed[playerid]);
+			_g_s_guiSpeed[playerid] = INVALID_OBJECT_ID;
 		}
-		tds_Player[playerid][Enabled] = 0;
 	}
+	_g_s_isGUIEnabled[playerid] = !_g_s_isGUIEnabled[playerid];
 	return 1;
 }
 
@@ -377,10 +374,10 @@ static tdSpeedo_Toggle(playerid, activate) {
 */
 
 public OnPlayerConnect(playerid) {
-	for (new i = 0; i < _:SpeedometerComponents-1; i++) {
-		tds_Player[playerid][SpeedometerComponents:i] = INVALID_OBJECT_ID;
-	}
-	tds_Player[playerid][Enabled] = 0;
+	_g_s_guiName[playerid] = INVALID_OBJECT_ID;
+	_g_s_guiStatus[playerid] = INVALID_OBJECT_ID;
+	_g_s_guiSpeed[playerid] = INVALID_OBJECT_ID;
+	_g_s_isGUIEnabled[playerid] = false;
 
 	#if defined tf_OnPlayerConnect
 		return tds_OnPlayerConnect(playerid);
@@ -389,10 +386,10 @@ public OnPlayerConnect(playerid) {
 
 
 public OnPlayerDisconnect(playerid, reason) {
-	if(tds_Player[playerid][Status] != INVALID_OBJECT_ID) {
-		DestroyDynamicObject(tds_Player[playerid][Name]);
-		DestroyDynamicObject(tds_Player[playerid][Status]);
-		DestroyDynamicObject(tds_Player[playerid][Speed]);
+	if(_g_s_guiStatus[playerid] != INVALID_OBJECT_ID) {
+		DestroyDynamicObject(_g_s_guiName[playerid]);
+		DestroyDynamicObject(_g_s_guiStatus[playerid]);
+		DestroyDynamicObject(_g_s_guiSpeed[playerid]);
 	}
 
 	#if defined tf_OnPlayerDisconnect
@@ -402,9 +399,9 @@ public OnPlayerDisconnect(playerid, reason) {
 
 public OnPlayerStateChange(playerid, newstate, oldstate) {
 	if (newstate == PLAYER_STATE_DRIVER || newstate == PLAYER_STATE_PASSENGER) {
-		tdSpeedo_Toggle(playerid, 1);
+		tdSpeedo_Toggle(playerid, true);
 	} else {
-		tdSpeedo_Toggle(playerid, 0);
+		tdSpeedo_Toggle(playerid, false);
 	}
 
 	#if defined tf_OnPlayerStateChange
