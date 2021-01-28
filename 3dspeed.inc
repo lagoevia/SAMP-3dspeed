@@ -30,9 +30,8 @@
 */
 
 // TODO: add ability to specify custom offsets for each player
-// TODO: change prefixing of macros to 'TDS' to shorten length? Probably not
 // TODO: hidename macro was there to avoid drawing an object if they are not meant to be drawn - however, this was very forcing to all players and not versatile; explain in PR
-// TODO: fix hooks not returning 1 if custom name not defined. Also, why not ALS? Point is to communicate that to other libraries, or am I confusing something?
+// TODO: fix hooks not returning 1 if custom name not defined. Explanation on EXPLAIN.md, use it on PR.
 
 #define TDSPEED_INVALID_ITEM -1
 
@@ -379,8 +378,10 @@ public OnPlayerConnect(playerid) {
 	_g_s_guiSpeed[playerid] = INVALID_OBJECT_ID;
 	_g_s_isGUIEnabled[playerid] = false;
 
-	#if defined tf_OnPlayerConnect
+	#if defined tds_OnPlayerConnect
 		return tds_OnPlayerConnect(playerid);
+	#else
+		return 1;
 	#endif
 }
 
@@ -392,8 +393,10 @@ public OnPlayerDisconnect(playerid, reason) {
 		DestroyDynamicObject(_g_s_guiSpeed[playerid]);
 	}
 
-	#if defined tf_OnPlayerDisconnect
-		return tds_OnPlayerDisconnect(playerid);
+	#if defined tds_OnPlayerDisconnect
+		return tds_OnPlayerDisconnect(playerid, reason);
+	#else
+		return 1;
 	#endif
 }
 
@@ -406,6 +409,8 @@ public OnPlayerStateChange(playerid, newstate, oldstate) {
 
 	#if defined tf_OnPlayerStateChange
 		return tds_OnPlayerStateChange(playerid);
+	#else
+		return 1;
 	#endif
 }
 
